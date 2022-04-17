@@ -106,7 +106,8 @@ app.post('/auth', async function (req, res) {
     const [[user]] = await req.db.query(`
       SELECT * FROM user WHERE email = :email
     `, {  
-      email: req.body.email
+      email: req.body.email,
+      password: req.body.password
     });
 
     if (!user) {
@@ -118,13 +119,8 @@ app.post('/auth', async function (req, res) {
     const userPassword = `${user.password}`;
 
     console.log('userPassword', userPassword);
-
-    //const compare = await bcrypt.compare('hi', 'hi');
-    const compare = true; /* had to set compare variable 
-    to true, because for some reason bcrypt.compare was not working
-    I only did this for testing purposes. If someone
-    knows how to fix this error I would appreciate any 
-    assistance */
+    console.log('required password:', req.body.password);
+    const compare = await bcrypt.compare(req.body.password, userPassword);
     console.log('compare', compare);
 
     if (compare) {
@@ -210,7 +206,7 @@ app.use(async function verifyJwt(req, res, next) {
 
 //Private endpoints
 
-//fetching user's favorite products
+//fetching user's favorite products and notes
 app.get('/user-products', async(req, res)=> {
   try {
     const [list] = await req.db.query(`
@@ -226,44 +222,67 @@ app.get('/user-products', async(req, res)=> {
   }
 })
 //adding a product for a user's list of favorites
-app.post('/', async(req,res)=> {
+app.post('/products', async(req,res)=> {
   try {
     const [list] = await req.db.query(`
     INSERT INTO user_products(user_id, product_id) VALUES (:user_id, :product_id)`
     ,{
-      user_id: req.params.user_id,
+      user_id: req.user.userId,
       product_id: req.body.product_id
     });
+    res.json(list)
   } catch(err){
+    console.log(err);
+  }
+});
+//adding user notes
+app.post('/notes', async(req, res)=> {
+  try{
+    const[notes] = await req.db.query(`
+    INSERT INTO notes(note,user_id) VALUES (:note, :user_id)`, {
+      note: req.body.note,
+      user_id: req.user.userId
+    });
+    res.json(notes);
+  }catch(err){
     console.log(err);
   }
 });
 //updating a product for a user's list of favorites 
 app.put('/product/:id', async(req, res)=> {
-  const [product] = await req.db.query (`
-  UPDATE user_products SET product_id = :product_id WHERE user_id = :id`,
+  const [list] = await req.db.query (`
+  UPDATE user_products SET product_id = :product_id WHERE id = :id`,
   {
     product_id : req.body.product_id,
-    user_id: req.params.user_id
-  })
+    id: req.params.id
+  });
+  res.json(list);
 });
 
 app.put('/note/:id', async(req, res)=> {
   const [notes] = await req.db.query (`
-  UPDATE notes SET note = :note WHERE user_id = :id`,
+  UPDATE notes SET note = :note WHERE id = :id`,
   {
     note: req.body.note,
-    user_id: req.params.user_id
+    id: req.params.id
   })
   res.json(notes);
 });
 //remove a product from a user's list of favorites
-app.delete('/:id', async (req, res)=> {
+app.delete('/product/:id', async (req, res)=> {
   const[product] = await req.db.query(`
-  DELETE FROM user_products WHERE product_id = :product_id `);
+  DELETE FROM user_products WHERE id = :id `, 
   {
-    product_id: req.params.product_id
+    id: req.params.id
   }
+  );
   res.json(product)
+});
+//removes user note
+app.delete('/note/:id', async (req, res)=> {
+  const [note] = await req.db.query(`
+  DELETE FROM notes WHERE id = :id`, {
+    id: req.params.id
+  })
 })
 app.listen(port, () => console.log(`Demo app listening at http://localhost:${port}`));
