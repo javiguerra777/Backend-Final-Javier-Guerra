@@ -14,7 +14,7 @@ const app = express();
 // importing .env file
 require('dotenv').config();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4500;
 
 const pool = mysql.createPool({
   host: 'localhost',
@@ -80,9 +80,9 @@ app.post('/register', async function (req, res) {
           password: hash
         });
 
-        console.log('user', user)
+        console.log('user', user);
       } catch (error) {
-        console.log('error', error)
+        console.log('error', error);
       }
     });
 
@@ -107,11 +107,10 @@ app.post('/auth', async function (req, res) {
       SELECT * FROM user WHERE email = :email
     `, {  
       email: req.body.email,
-      password: req.body.password
     });
 
     if (!user) {
-      res.json('Email not found');
+      res.status(400).json('Email not found');
     }
 
     console.log('user', user)
@@ -134,7 +133,7 @@ app.post('/auth', async function (req, res) {
 
       res.json(encodedUser)
     } else {
-      res.json('Password not found');
+      res.status(400).json('Password not found');
     }
   } catch (err) {
     console.log('Error in /auth', err)
@@ -146,6 +145,7 @@ app.get('/products', async (req, res)=> {
   try {
     const [products] = await req.db.query('SELECT * FROM products');
     res.json(products);
+    console.log('Public products endpoint')
   }catch(err){
     console.log(err)
   }
@@ -207,22 +207,25 @@ app.use(async function verifyJwt(req, res, next) {
 //Private endpoints
 
 //fetching user's favorite products and notes
-app.get('/user-products', async(req, res)=> {
+app.get('/user-products', async (req, res) => {
   try {
     const [list] = await req.db.query(`
-    SELECT * FROM user_products WHERE user_id = :user_id`,
-    {
-      user_id: req.user.userId
-    }
+    SELECT * FROM products
+    INNER JOIN user_products
+     ON user_products.product_id = products.id
+     WHERE user_id = :user_id`,
+      {
+        user_id: req.user.userId
+      }
     );
     res.json(list);
     console.log('/user-products', list);
-  } catch(err){
+  } catch (err) {
     console.log(err);
   }
-})
+});
 //adding a product for a user's list of favorites
-app.post('/products', async(req,res)=> {
+app.post('/user-products', async(req,res)=> {
   try {
     const [list] = await req.db.query(`
     INSERT INTO user_products(user_id, product_id) VALUES (:user_id, :product_id)`
@@ -249,7 +252,7 @@ app.post('/notes', async(req, res)=> {
   }
 });
 //updating a product for a user's list of favorites 
-app.put('/product/:id', async(req, res)=> {
+app.put('/user-products/:id', async(req, res)=> {
   const [list] = await req.db.query (`
   UPDATE user_products SET product_id = :product_id WHERE id = :id`,
   {
@@ -269,7 +272,7 @@ app.put('/note/:id', async(req, res)=> {
   res.json(notes);
 });
 //remove a product from a user's list of favorites
-app.delete('/product/:id', async (req, res)=> {
+app.delete('/user-products/:id', async (req, res)=> {
   const[product] = await req.db.query(`
   DELETE FROM user_products WHERE id = :id `, 
   {
@@ -284,5 +287,6 @@ app.delete('/note/:id', async (req, res)=> {
   DELETE FROM notes WHERE id = :id`, {
     id: req.params.id
   })
+  res.json(note);
 })
 app.listen(port, () => console.log(`Demo app listening at http://localhost:${port}`));
