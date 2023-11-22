@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 
@@ -18,9 +19,9 @@ const port = process.env.PORT || 4500;
 
 const pool = mysql.createPool({
   host: 'localhost',
-  user: 'root',
-  password: 'password',
-  database: 'backend_final'
+  user: process.env.USER,
+  password: process.env.PASSWORD,
+  database: process.env.DATABASE
 });
 
 app.use(async function mysqlConnection(req, res, next) {
@@ -289,4 +290,4 @@ app.delete('/note/:id', async (req, res)=> {
   })
   res.json(note);
 })
-app.listen(port, () => console.log(`Demo app listening at http://localhost:${port}`));
+app.listen(port, () => console.log(`Server listening at http://localhost:${port}`));
